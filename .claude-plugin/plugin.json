@@ -1,0 +1,7 @@
+{
+  "name": "dev-loops",
+  "description": "Stack-neutral subagent workflow: plan-implementer, dev / frontend / docs cycle loops, and the eight role agents they dispatch.",
+  "version": "0.1.0",
+  "author": { "name": "Les Borkowski" },
+  "keywords": ["workflow", "subagents", "code-review", "documentation", "planning"]
+}

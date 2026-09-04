@@ -1,0 +1,11 @@
+{
+  "name": "dev-loops-marketplace",
+  "owner": { "name": "Les Borkowski" },
+  "plugins": [
+    {
+      "name": "dev-loops",
+      "source": "./",
+      "description": "Plan-implementer + dev/frontend/docs cycle loops with eight role agents. Stack-neutral; reads project specifics from CLAUDE.md."
+    }
+  ]
+}
