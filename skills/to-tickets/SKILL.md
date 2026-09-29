@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-**Default to local-file mode** — one file per ticket under `.scratch/<feature-slug>/issues/` — unless the project documents an issue tracker to publish to. That layout is what `/plan-implementer-loop` reads, so keep it even when a tracker exists and you mirror the tickets there.
+**Default to local-file mode** — one file per ticket under `.scratch/<feature-slug>/issues/` — unless the project documents an issue tracker to publish to. That layout is what `/build-feature` reads, so keep it even when a tracker exists and you mirror the tickets there.
 
 ## Process
 
@@ -37,7 +37,7 @@ Break the work into **tracer bullet** tickets.
 
 Give each ticket its **blocking edges** — the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
 
-**Documentation is its own ticket, not a line item inside a code slice.** When the work makes a living overview, a `CLAUDE.md`, or a README inaccurate, add a final docs-only ticket marked `Type: docs`, blocked by the tickets whose behaviour it describes — normally last in the chain, so it documents the settled result instead of being rewritten by every later slice. That marker is what `/plan-implementer-loop` routes on: `Type: docs` tickets go to `/docs-cycle-loop` (write → fact-check → stale-ref sweep), not to the dev loops, whose test/build steps and code-convention reviewer have nothing to do on prose.
+**Documentation is its own ticket, not a line item inside a code slice.** When the work makes a living overview, a `CLAUDE.md`, or a README inaccurate, add a final docs-only ticket marked `Type: docs`, blocked by the tickets whose behaviour it describes — normally last in the chain, so it documents the settled result instead of being rewritten by every later slice. That marker is what `/build-feature` routes on: `Type: docs` tickets go to `/write-docs` (write → fact-check → stale-ref sweep), not to the dev loops, whose test/build steps and code-convention reviewer have nothing to do on prose.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket — green is promised only there.
 

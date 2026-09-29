@@ -1,13 +1,14 @@
 ---
 description: Run one frontend/UI task through implement-and-self-verify -> test -> review with a bounded auto-fix loop (max 3), then hand results back without auto-advancing.
 argument-hint: <self-contained frontend task brief>
+model: sonnet
 ---
 
 Run this single, self-contained frontend task through the full subagent cycle with a bounded fix-loop: $ARGUMENTS
 
-This is the frontend sibling of `/dev-cycle-loop`. Same contract: it executes ONE unit of work and returns to you at the end — it does NOT advance to the next task. The caller owns sequencing and pausing for go-ahead.
+This is the frontend sibling of `/build-ticket`. Same contract: it executes ONE unit of work and returns to you at the end — it does NOT advance to the next task. The caller owns sequencing and pausing for go-ahead.
 
-**What makes this different from `/dev-cycle-loop`:** browser verification happens *inside* the implementer, not as a separate orchestrator step. `frontend-dev` writes the code, drives the changed flow in Chrome via the chrome-devtools MCP tools, and fixes what it sees before returning — so the fix → look → fix loop never crosses an agent boundary. Use `/dev-cycle-loop` for backend-only work, and this command whenever the acceptance criteria are visual or interaction-based.
+**What makes this different from `/build-ticket`:** browser verification happens *inside* the implementer, not as a separate orchestrator step. `frontend-dev` writes the code, drives the changed flow in Chrome via the chrome-devtools MCP tools, and fixes what it sees before returning — so the fix → look → fix loop never crosses an agent boundary. Use `/build-ticket` for backend-only work, and this command whenever the acceptance criteria are visual or interaction-based.
 
 **Rules for the whole cycle:**
 - You (the orchestrator running this command) do NOT edit code yourself. Every change goes through a subagent so each stays scoped to its role.
@@ -16,11 +17,11 @@ This is the frontend sibling of `/dev-cycle-loop`. Same contract: it executes ON
 - `frontend-dev` has the chrome-devtools MCP tools, `PowerShell`, and `Bash` (it uses an inherited tool pool rather than an allowlist). `test-writer` and `code-reviewer` have narrow allowlists and no MCP — don't ask them to check anything in a browser.
 - **Don't do lookups yourself.** When you need a component's location, a hook's call sites, or a file list before you can write a brief, dispatch `quick-lookup` (haiku, read-only, LSP-aware) instead of grepping in your own context.
 - **Resolve the project's test command before briefing `test-writer`** — read `## Build & Test Commands` in `CLAUDE.md` and pass it inline rather than assuming a package manager.
-- Inside this loop the recipe governs. Superpowers skills are used at the named integration points below; their own triggers do not restructure the loop. Skip any integration point whose skill isn't installed.
+- Inside this command the recipe governs. Superpowers skills are used at the named integration points below; their own triggers do not restructure the loop. Skip any integration point whose skill isn't installed.
 
 **Steps:**
 
-0. **Isolate (standalone runs only).** Skip when nested inside `/plan-implementer-loop` (it already set up an isolated worktree and this cycle inherits that working directory) or when the session is already in a linked worktree. Otherwise follow `superpowers:using-git-worktrees` Step 0, then use the native `EnterWorktree` tool before Step 1. If isolating, every path you hand a subagent must point at the worktree's checkout, not the original checkout.
+0. **Isolate (standalone runs only).** Skip when nested inside `/drive-tickets` or `/build-feature` (it already set up an isolated worktree and this cycle inherits that working directory) or when the session is already in a linked worktree. Otherwise follow `superpowers:using-git-worktrees` Step 0, then use the native `EnterWorktree` tool before Step 1. If isolating, every path you hand a subagent must point at the worktree's checkout, not the original checkout.
 
 1. **Establish visual direction (visual scope only).** If the ticket introduces or reshapes UI rather than just wiring behaviour, settle the direction *before* implementing — load the `frontend-design` skill and put concrete direction (layout intent, typography, component choices, states) into the brief. `frontend-dev` loads that skill too, but the decisions belong in the brief so they're reviewable. Skip for pure behaviour/bugfix tickets.
 
@@ -42,14 +43,15 @@ This is the frontend sibling of `/dev-cycle-loop`. Same contract: it executes ON
    - For a complex diff, or when the brief asks for it, also run the `/code-review` skill at this level with the fixed point = this task's base commit and the spec source = the task brief. Feed findings into the same fix-loop.
 
 5. **Fix-loop (max 3 iterations):**
-   - Read the findings yourself with `superpowers:receiving-code-review` rigor: verify each is technically real against the actual code before forwarding it — drop the ones that don't hold up.
+   - **Verify findings via `verifier`, not in your own context.** Dispatch `verifier` in finding-check mode with the findings, the file list and the diff; forward only the ones it marks `real`, dropping the rest rather than commissioning performative fixes. If a verdict looks wrong to you on its face, that's the moment to read the code yourself — not by default. (Same `superpowers:receiving-code-review` rigor, applied by a cheaper model whose reading doesn't accumulate in the orchestrator.)
    - Send the SPECIFIC findings back to `frontend-dev` (not "address the review"). It can re-verify the affected flow in the browser as part of the fix, so say which flow to re-check.
    - **Re-review and re-fix by resuming the same agents, not by spawning new ones.** Use `SendMessage` with the existing `code-reviewer`'s ID or name for the follow-up diff, and the existing `frontend-dev`'s for the fix. `frontend-dev` in particular is expensive to restart: a fresh instance has to re-navigate, re-snapshot, and rebuild its picture of the page before it can change anything, while the running one still has the browser where it left it. Only spawn a fresh reviewer when you deliberately want an unbiased second opinion on a large rewrite. That is one iteration.
    - A visual or console regression found in step 3 counts the same as a review finding — same loop, same bound.
    - If a failure resists a fix iteration, apply `superpowers:systematic-debugging` (root cause first) before burning the next iteration on another guess.
+   - **Before the third iteration**, if an advisor tool is available, consult it once with the remaining findings and what the previous two fixes tried. Skip this if no advisor is on.
    - Clean review → exit the loop. 3 iterations with findings still open → STOP, report them, and ask the user how to proceed.
 
 6. **Simplification pass (optional)** — only when the brief requests it or the diff turned out large: run the `/simplify` skill on the diff, then send the result to the existing `code-reviewer` once via `SendMessage`. This runs here at the orchestrator level — subagents have no Skill tool. One pass only.
 
 7. **Report back** — summarise for the caller: what was implemented, which files changed, which flows were driven in the browser and what was observed, what tests were added and their actual pass/fail output, and the final review status (clean / escalated). Apply `superpowers:verification-before-completion`: every "done/passing" claim must be backed by output captured during this cycle. Do NOT start the next task.
-   - Include a **docs impact** line: name what this ticket changed that a living overview, a `CLAUDE.md`, or a README will need to reflect — or "none". **This loop does not write documentation** — that is `/docs-cycle-loop`'s job, and the caller sequences it (`/plan-implementer-loop` records these lines in `.scratch/<feature-slug>/docs-impact.md` and routes docs tickets there). Do not send `frontend-dev` off to update an overview here.
+   - Include a **docs impact** line: name what this ticket changed that a living overview, a `CLAUDE.md`, or a README will need to reflect — or "none". **This loop does not write documentation** — that is `/write-docs`'s job, and the caller sequences it (`/build-feature` records these lines in `.scratch/<feature-slug>/docs-impact.md` and routes docs tickets there). Do not send `frontend-dev` off to update an overview here.

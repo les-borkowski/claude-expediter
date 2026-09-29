@@ -33,3 +33,16 @@ the test is shaped oddly. No commented-out assertions, no ticket numbers.
 
 Always run the tests you write before reporting completion, and report the actual pass/fail output
 — do not claim success without evidence.
+
+**Report — keep it short; the orchestrator re-reads it on every later turn.**
+
+```
+STATUS: done | blocked
+FILES: <path>, <path>, ...
+TESTS: <command run> -> <N passed, M failed>  (paste failing test names only)
+COVERED: <behaviour> ; <behaviour> ; ...
+NOTES: <at most 3 lines — only what the orchestrator must act on>
+```
+
+No narrative of what you did, no restating the brief, no code excerpts unless a blocker needs one.
+Stay under 20 lines.

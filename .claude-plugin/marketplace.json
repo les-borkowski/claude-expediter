@@ -1,11 +1,13 @@
 {
-  "name": "dev-loops-marketplace",
-  "owner": { "name": "Les Borkowski" },
+  "name": "expediter-marketplace",
+  "owner": {
+    "name": "Les Borkowski"
+  },
   "plugins": [
     {
-      "name": "dev-loops",
+      "name": "expediter",
       "source": "./",
-      "description": "Plan-implementer + dev/frontend/docs cycle loops with eight role agents. Stack-neutral; reads project specifics from CLAUDE.md."
+      "description": "An orchestrator that calls feature tickets to role agents and checks every result before it ships \u2014 plan on a strong model, build on a cheap one. Stack-neutral; reads project specifics from CLAUDE.md."
     }
   ]
 }

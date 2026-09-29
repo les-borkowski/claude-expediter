@@ -10,7 +10,7 @@ Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
 
 Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
 
-> **Disambiguation:** this is the `dev-loops` two-axis review skill — distinct from any other installed skill of the same name (a GitHub PR reviewer, say) and from the builtins `/review` and `/security-review`. If a bare `/code-review` is ambiguous in your setup, invoke it as `dev-loops:code-review`.
+> **Disambiguation:** this is the `expediter` two-axis review skill — distinct from any other installed skill of the same name (a GitHub PR reviewer, say) and from the builtins `/review` and `/security-review`. If a bare `/code-review` is ambiguous in your setup, invoke it as `expediter:code-review`.
 
 ## Process
 
@@ -27,7 +27,7 @@ Before going further, confirm the fixed point resolves (`git rev-parse <fixed-po
 Look for the originating spec, in this order:
 
 1. A path the user passed as an argument (e.g. a ticket file or plan).
-2. A plan/ticket file matching the branch or feature: `docs/<feature>-plan.md` or `.scratch/<feature-slug>/issues/<NN>-*.md` — the local-file layout `/plan-implementer-loop` and `/to-tickets` write when the project has no issue tracker.
+2. A plan/ticket file matching the branch or feature: `docs/<feature>-plan.md` or `.scratch/<feature-slug>/issues/<NN>-*.md` — the local-file layout `/build-feature` and `/to-tickets` write when the project has no issue tracker.
 3. Issue references in the commit messages (`#123`, `Closes #45`, etc.).
 4. If nothing is found, ask the user where the spec is. If they say there isn't one, the **Spec** sub-agent will skip and report "no spec available".
 
@@ -57,7 +57,7 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 ### 4. Spawn both sub-agents in parallel
 
-Send a single message with two `Agent` tool calls. Use the `general-purpose` subagent for both.
+Send a single message with two `Agent` tool calls. Use the `general-purpose` subagent for both, **with `model: sonnet`** — `general-purpose` otherwise inherits the session model, which on a planning session is the most expensive one.
 
 **Standards sub-agent prompt** — include:
 

@@ -2,6 +2,7 @@
 name: feature-implementer
 description: Implements features and bug fixes following the repo's existing architectural patterns. Use for standard implementation work that isn't a novel architectural decision.
 model: sonnet
+effort: medium
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 
@@ -30,3 +31,15 @@ against its canonical source before committing it; do not infer one from a namin
   the **actual pass/fail output**, not assumptions.
 - If a task seems to require a new architectural pattern rather than following an existing one, say
   so instead of improvising one.
+
+**Report — keep it short; the orchestrator re-reads it on every later turn.**
+
+```
+STATUS: done | blocked
+FILES: <path>, <path>, ...
+TESTS: <command run> -> <N passed, M failed>  (paste failing test names only)
+NOTES: <at most 3 lines — only what the orchestrator must act on>
+```
+
+No narrative of what you did, no restating the brief, no code excerpts unless a blocker needs one.
+Stay under 20 lines.

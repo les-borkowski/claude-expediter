@@ -62,3 +62,16 @@ professional, to-the-point prose:
 
 **Report back:** the exact files you changed, and for each non-obvious claim you wrote, where you
 verified it (file and symbol). If you refused part of the brief, say which part and why.
+
+**Report — keep it short; the orchestrator re-reads it on every later turn.**
+
+```
+STATUS: done | blocked
+FILES: <path>, <path>, ...
+VERIFIED: <claim> -> <file:line it was checked against>  (one line each)
+REFUSED: <anything refused and why, or none>
+NOTES: <at most 3 lines — only what the orchestrator must act on>
+```
+
+No narrative of what you did, no restating the brief, no code excerpts unless a blocker needs one.
+Stay under 20 lines.

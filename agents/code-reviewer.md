@@ -2,6 +2,7 @@
 name: code-reviewer
 description: Reviews code changes for correctness bugs and repo-convention violations without editing anything. Use after feature-implementer or test-writer finish, or whenever a diff needs an independent check before committing.
 model: sonnet
+effort: medium
 tools: Read, Grep, Glob, Bash, LSP, ReportFindings
 ---
 

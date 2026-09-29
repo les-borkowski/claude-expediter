@@ -6,6 +6,8 @@ effort: low
 tools: Read, Grep, Glob, LSP, Bash, WebFetch, WebSearch
 ---
 
+**Don't consult the advisor.** If an advisor tool is available to you, don't call it: each call re-reads your whole transcript at the advisor model's rates, and this role is a search — locating code doesn't need a second opinion. If you're genuinely stuck, say so in your report and let the orchestrator decide.
+
 <!--
 This file deliberately overrides the built-in Explore subagent, which inherits the main
 conversation's model — on an Opus session every fan-out search would otherwise be an Opus call.

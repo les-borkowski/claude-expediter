@@ -1,7 +1,33 @@
 {
-  "name": "dev-loops",
-  "description": "Stack-neutral subagent workflow: plan-implementer, dev / frontend / docs cycle loops, and the eight role agents they dispatch.",
-  "version": "0.1.0",
-  "author": { "name": "Les Borkowski" },
-  "keywords": ["workflow", "subagents", "code-review", "documentation", "planning"]
+  "name": "expediter",
+  "description": "Orchestrates a feature through role agents: /plan-feature and /drive-tickets (or /build-feature in one session), per-ticket /build-ticket, /build-ui-ticket and /write-docs, and a checkpoint that survives /clear.",
+  "version": "0.5.0",
+  "author": {
+    "name": "Les Borkowski"
+  },
+  "keywords": [
+    "workflow",
+    "subagents",
+    "code-review",
+    "documentation",
+    "planning"
+  ],
+  "userConfig": {
+    "nudge_at_tokens": {
+      "type": "number",
+      "title": "Nudge to /clear at (tokens)",
+      "description": "When the main conversation's context passes this many tokens, expediter suggests /clear (free) over /compact. Set it to roughly where you'd compact by hand. Opus 5.5 and Sonnet 5.5 have a 1M window, so 40-50% is 400-500k; lower saves more usage.",
+      "default": 100000,
+      "min": 20000,
+      "max": 1000000
+    },
+    "checkpoint_max_age_hours": {
+      "type": "number",
+      "title": "Checkpoint freshness (hours)",
+      "description": "After /clear or compaction, only a checkpoint updated within this many hours is re-injected.",
+      "default": 24,
+      "min": 1,
+      "max": 168
+    }
+  }
 }
