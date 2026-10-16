@@ -1,2 +1,3 @@
 .scratch/
 __pycache__/
+mods/*/.claude-plugin/types/

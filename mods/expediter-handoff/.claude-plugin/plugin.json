@@ -1,0 +1,24 @@
+{
+  "name": "expediter-handoff",
+  "version": "0.1.0",
+  "description": "/handoff writes the resume checkpoint from a cached fork and clears the conversation; shows context fill in the status line.",
+  "author": {
+    "name": "Les Borkowski"
+  },
+  "userConfig": {
+    "auto_clear": {
+      "type": "boolean",
+      "title": "Clear after /handoff",
+      "description": "After /handoff writes the checkpoint, run /clear automatically. The expediter SessionStart hook then resumes from the checkpoint.",
+      "default": true
+    },
+    "nudge_percent": {
+      "type": "number",
+      "title": "Suggest /handoff at context %",
+      "description": "Show a toast once the context window passes this percent full.",
+      "default": 40,
+      "min": 10,
+      "max": 95
+    }
+  }
+}
