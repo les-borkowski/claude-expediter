@@ -1,10 +1,11 @@
 {
   "name": "expediter-handoff",
-  "version": "0.1.0",
-  "description": "/handoff writes the resume checkpoint from a cached fork and clears the conversation; shows context fill in the status line.",
+  "version": "0.2.0",
+  "description": "/handoff writes the expediter resume checkpoint and clears; guards /drive-tickets against push/merge, refreshes the checkpoint before compaction, and shows drive progress above the prompt.",
   "author": {
     "name": "Les Borkowski"
   },
+  "types": "./types/index.d.ts",
   "userConfig": {
     "auto_clear": {
       "type": "boolean",
@@ -19,6 +20,18 @@
       "default": 40,
       "min": 10,
       "max": 95
+    },
+    "guard_drive": {
+      "type": "boolean",
+      "title": "Block push/merge during a drive",
+      "description": "While a /drive-tickets checkpoint is not status: done, deny git push, git merge and gh pr merge (subagents included).",
+      "default": true
+    },
+    "checkpoint_on_compact": {
+      "type": "boolean",
+      "title": "Refresh checkpoint before compaction",
+      "description": "Before /compact or an auto-compaction, write a fresh checkpoint unless one was updated in the last 10 minutes.",
+      "default": true
     }
   }
 }
