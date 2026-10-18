@@ -113,6 +113,11 @@ Refined plans go to `docs/<feature>-plan.md` unless your `## Documentation Map` 
   browser through it.
 - **`frontend-design`** — optional; loaded when a ticket introduces or reshapes UI.
 - **`/simplify`** — a Claude Code builtin, used in the optional simplification pass.
+- **`warden`** — optional security scan in `/build-ticket` and `/build-ui-ticket`. With the
+  `warden` CLI on `PATH` and the repo inside `WARDEN_SCAN_ROOTS` (set it in Claude Code's
+  `settings.json` `env` so subagents see it too), every ticket is scanned; open HIGH/CRITICAL
+  findings are verified, triaged and fixed in the fix-loop. Without it the step is skipped and the
+  report says so.
 
 ## Agent name collisions
 
