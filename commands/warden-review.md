@@ -29,7 +29,7 @@ verify-and-triage, but nothing is implemented unless the user says so.
 
 2. **Nothing blocking?** If `blocking` is empty, report clean: scanners run, `new_findings`,
    `total_findings`, and that lower-severity open findings are listed by
-   `warden findings --path <path> --status OPEN`. Stop.
+   `warden findings --path <path> --status OPEN` (and `--status REOPENED`). Stop.
 
 3. **Verify.** Dispatch `verifier` (this plugin's agent) in finding-check mode with each blocking
    finding's id, rule, `path:line`, title and snippet. Ask, per category:
@@ -51,7 +51,9 @@ verify-and-triage, but nothing is implemented unless the user says so.
    - **Secret:** remove it from the code and load it from the environment; follow the finding's
      advice on rotation (already pushed → rotate).
    Ask the user before changing anything. If they approve, make the change through
-   `feature-implementer`, then re-run step 1 to confirm `blocking` is empty.
+   `feature-implementer`, re-run step 1 to confirm `blocking` is empty, then record each fix with
+   `warden record-fix <id> --link <branch or commit> --summary "<what changed>"` so the scan after merge
+   marks it VERIFIED.
 
 6. **Report:** a short table — finding, verdict, one-line reason, proposed fix (or "none: false
    positive") — plus any scanner that failed or was skipped.
