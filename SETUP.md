@@ -118,6 +118,12 @@ Refined plans go to `docs/<feature>-plan.md` unless your `## Documentation Map` 
   `settings.json` `env` so subagents see it too), every ticket is scanned; open HIGH/CRITICAL
   findings are verified, triaged and fixed in the fix-loop. Without it the step is skipped and the
   report says so.
+- **`ponytail`** — optional; keeps implementers to the smallest complete change. Its
+  `SubagentStart` hook injects its ruleset into every subagent, including the read-only ones,
+  where it only costs tokens and breaks their report formats. Scope it to the agents that write by
+  adding `"PONYTAIL_SUBAGENT_MATCHER": "feature-implementer|test-writer|frontend-dev|docs-writer"`
+  to Claude Code's `settings.json` `env`. `/drive-tickets` lists the branch's `shortcut:` markers
+  in its final report.
 
 ## Agent name collisions
 

@@ -1,7 +1,7 @@
 {
   "name": "expediter",
   "description": "Orchestrates a feature through role agents: /plan-feature and /drive-tickets (or /build-feature in one session), per-ticket /build-ticket, /build-ui-ticket and /write-docs, and a checkpoint that survives /clear.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "author": {
     "name": "Les Borkowski"
   },

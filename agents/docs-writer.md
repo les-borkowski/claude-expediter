@@ -70,7 +70,7 @@ STATUS: done | blocked
 FILES: <path>, <path>, ...
 VERIFIED: <claim> -> <file:line it was checked against>  (one line each)
 REFUSED: <anything refused and why, or none>
-NOTES: <at most 3 lines — only what the orchestrator must act on>
+NOTES: <at most 3 lines — only what the orchestrator must act on; ponytail's closing skipped/risk lines go here>
 ```
 
 No narrative of what you did, no restating the brief, no code excerpts unless a blocker needs one.
