@@ -53,6 +53,7 @@ Then set the project up per [SETUP.md](SETUP.md). The minimum that makes the com
 | `/build-ticket` | one non-UI ticket | `feature-implementer` → (`test-writer` ∥ `code-reviewer`) → bounded fix loop |
 | `/build-ui-ticket` | one UI ticket | `frontend-dev` verifies in a real browser *inside* the implementer |
 | `/write-docs` | one docs ticket | no build, no tests — verification is fact-checking prose against code |
+| `/warden-review` | a security review | `warden scan` → `verifier` judges each open HIGH/CRITICAL finding → `warden triage` records it → fixes drafted, applied only if you say so. Needs the `warden` CLI (see SETUP.md). The ticket commands run the same scan automatically. |
 
 ## Agents
 
