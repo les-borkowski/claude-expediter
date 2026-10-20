@@ -12,7 +12,7 @@
     {
       "name": "expediter-handoff",
       "source": "./mods/expediter-handoff",
-      "description": "/handoff writes the expediter resume checkpoint and clears the conversation; shows context fill in the status line. Needs the expediter plugin for resume."
+      "description": "/handoff writes the expediter resume checkpoint and clears the conversation. Needs the expediter plugin for resume."
     }
   ]
 }

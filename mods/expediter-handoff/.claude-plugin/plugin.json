@@ -1,6 +1,6 @@
 {
   "name": "expediter-handoff",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "/handoff writes the expediter resume checkpoint and clears; guards /drive-tickets against push/merge, refreshes the checkpoint before compaction, and shows drive progress above the prompt.",
   "author": {
     "name": "Les Borkowski"

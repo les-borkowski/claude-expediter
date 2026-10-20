@@ -29,6 +29,8 @@ the `ReportFindings` tool; do not also restate them as prose.
      name`), comments narrating what the code plainly does, commented-out code, ticket numbers or
      changelog narration. Comments should be brief and explain *why*. Flag it when the noise is
      real — not as a style preference, and never a comment that documents a genuine constraint.
+     A `shortcut: <limit>, <when to upgrade>` comment (ponytail's debt marker) is wanted; flag it
+     only when it names no real limit or upgrade trigger.
 
 4. **Test coverage gaps** — new logic with no corresponding test at the level this repo tests at.
    **Skip this entirely if your brief says tests are being written concurrently** — the diff you

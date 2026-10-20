@@ -163,7 +163,6 @@ export const register: Register = (on, options) => {
     await refreshDrive($).catch(() => null)
     const { context } = await $.session.usage()
     const percent = context.percent ?? 0
-    $.ui.status(`ctx ${Math.round(percent)}%`)
     const limit = Number(options.nudge_percent ?? 40)
     if (percent >= limit && percent >= nudgedAt * 1.25) {
       nudgedAt = percent

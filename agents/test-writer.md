@@ -41,7 +41,7 @@ STATUS: done | blocked
 FILES: <path>, <path>, ...
 TESTS: <command run> -> <N passed, M failed>  (paste failing test names only)
 COVERED: <behaviour> ; <behaviour> ; ...
-NOTES: <at most 3 lines — only what the orchestrator must act on>
+NOTES: <at most 3 lines — only what the orchestrator must act on; ponytail's closing skipped/risk lines go here>
 ```
 
 No narrative of what you did, no restating the brief, no code excerpts unless a blocker needs one.
