@@ -8,6 +8,14 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          { "type": "command", "command": "python3", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/pause_gate.py"], "timeout": 10 }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
