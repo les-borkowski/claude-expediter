@@ -193,8 +193,8 @@ a `/clear` in an ordinary session. It writes the same file the hook reads.
 ## Running several features
 
 `/run-features plan-a.md plan-b.md plan-c.md` in one terminal (your strongest model) plans each
-feature with you in turn — both approval gates as usual — and as each plan is approved opens a new
-Windows Terminal tab in its worktree running `claude --model sonnet --advisor opus
+feature with you in turn — you approve the design; the ticket split is approved automatically — and as each plan is approved opens a new
+Windows Terminal tab in its worktree — PowerShell 7 (`pwsh`) with your profile loaded — running `claude --model sonnet --advisor opus
 "/expediter:drive-tickets <slug>"`. Without `wt` it prints that line for you to run instead. A single
 plan works too. Running one feature by hand (`/plan-feature` + `/drive-tickets`, or `/build-feature`)
 is unchanged, apart from the ports below when the project declares them.

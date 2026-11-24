@@ -43,7 +43,9 @@ Give each ticket its **blocking edges** — the other tickets that must complete
 
 ### 4. Quiz the user
 
-Present the proposed breakdown as a numbered list. For each ticket, show:
+**If the caller pre-approves the breakdown** (`/run-features` does), skip the questions: check the granularity, the blocking edges and any merge/split yourself against the rules in step 3, show the list below for the record, and go straight to step 5.
+
+Otherwise, present the proposed breakdown as a numbered list. For each ticket, show:
 
 - **Title**: short descriptive name
 - **Blocked by**: which other tickets (if any) must complete first
