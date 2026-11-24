@@ -212,7 +212,7 @@ every worktree's feature with its checkpoint status, current task and ports.
 **Stale slots.** A slot is freed automatically when its worktree is gone or its checkpoint is
 missing. Otherwise a server still listening keeps its slot, even for a finished feature (it still
 uses RAM). With nothing listening, the slot is freed when the checkpoint says `status: done`, or
-after 30 minutes without a checkpoint change (a closed tab). Nothing is ever killed: and an app
+after 30 minutes without a checkpoint change (a closed tab). Nothing is ever killed: an app
 copy no feature accounts for shows as a `WARNING` in status for you to stop. Free a slot by hand
 with `slots.py release <slug>`.
 
