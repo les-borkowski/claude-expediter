@@ -62,9 +62,16 @@ def locked(path):
 
 
 def listening(port):
-    with socket.socket() as s:
-        s.settimeout(0.2)
-        return s.connect_ex(("127.0.0.1", port)) == 0
+    # dev servers on Windows often bind "localhost" to ::1 only (Vite), so probe both stacks
+    for family, host in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
+        try:
+            with socket.socket(family) as s:
+                s.settimeout(0.2)
+                if s.connect_ex((host, port)) == 0:
+                    return True
+        except OSError:
+            pass
+    return False
 
 
 def _checkpoint(worktree, slug):
@@ -79,10 +86,10 @@ def is_stale(entry, slug, now, listening):
         text, mtime = cp.read_text(encoding="utf-8", errors="ignore"), cp.stat().st_mtime
     except OSError:
         return True
+    if any(listening(p) for p in entry["ports"].values()):
+        return False  # a running app keeps its slot, even for a finished feature: it still uses RAM
     if re.search(r"status:\s*done\b", text[:600]):
         return True
-    if any(listening(p) for p in entry["ports"].values()):
-        return False
     return now - max(entry["acquired"], mtime) > GRACE_S
 
 
@@ -99,9 +106,10 @@ def acquire(data, repo, slug, worktree, max_n, bases, now, listening):
     reclaim(data, repo, now, listening)
     if len(slots) >= max_n:
         return None
-    held = {e["offset"] for e in slots.values()}
+    # ports held by any repo count: two repos with the same base ports must not share one
+    taken = {p for r in data.values() for e in r.values() for p in e["ports"].values()}
     k = 1
-    while k in held or any(listening(b + k) for b in bases.values()):
+    while any(b + k in taken or listening(b + k) for b in bases.values()):
         k += 1
     ports = {n: b + k for n, b in bases.items()}
     slots[slug] = {"worktree": str(worktree), "offset": k, "ports": ports, "acquired": now}
@@ -278,7 +286,7 @@ def test_listening_slot_kept():
 def test_done_or_missing_checkpoint_reclaimed():
     import time
     d = _fixture(); now = time.time()
-    assert is_stale(_entry(_wt(d, "a", status="done"), now), "a", now, lambda p: True)
+    assert is_stale(_entry(_wt(d, "a", status="done"), now), "a", now, lambda p: False)
     wt = _wt(d, "b")
     (d / "b" / ".scratch" / "b" / "checkpoint.md").unlink()
     assert is_stale(_entry(wt, now), "b", now, lambda p: True)
@@ -329,6 +337,29 @@ def test_concurrent_acquire_distinct():
     ts = [threading.Thread(target=run, args=(s,)) for s in wts]
     [t.start() for t in ts]; [t.join() for t in ts]
     assert out["a"] != out["b"] and None not in out.values(), out
+
+
+def test_listening_sees_ipv6_only_server():
+    s = socket.socket(socket.AF_INET6)
+    s.bind(("::1", 0)); s.listen()
+    try:
+        assert listening(s.getsockname()[1])
+    finally:
+        s.close()
+
+
+def test_done_slot_kept_while_app_still_listening():
+    import time
+    d = _fixture(); now = time.time()
+    e = _entry(_wt(d, "a", status="done"), now)
+    assert not is_stale(e, "a", now, lambda p: p == 8081)
+
+
+def test_offsets_distinct_across_repos():
+    d = _fixture(); data = {}
+    a = acquire(data, "r1", "a", _wt(d, "a"), 2, {"app": 8080}, 1e9, lambda p: False)
+    b = acquire(data, "r2", "b", _wt(d, "b"), 2, {"app": 8080}, 1e9, lambda p: False)
+    assert a != b, (a, b)
 
 
 def _self_test():

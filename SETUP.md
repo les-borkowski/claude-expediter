@@ -55,7 +55,9 @@ State:
   - `Max instances: 2` — how many copies of the app may run at once on this machine (default 2).
     Set it from RAM: what one copy uses against what you can spare.
 
-  Without a `Ports:` line nothing changes: servers start exactly as documented.
+  Without a `Ports:` line nothing changes: servers start exactly as documented. Declare it only if
+  the app works on any port: with it, every driver (even a lone one) runs on base + 1 or higher, so
+  CORS or OAuth origins pinned to the base ports would break browser checks.
 
 ### `## Conventions` — strongly recommended
 
@@ -195,7 +197,7 @@ feature with you in turn — both approval gates as usual — and as each plan i
 Windows Terminal tab in its worktree running `claude --model sonnet --advisor opus
 "/expediter:drive-tickets <slug>"`. Without `wt` it prints that line for you to run instead. A single
 plan works too. Running one feature by hand (`/plan-feature` + `/drive-tickets`, or `/build-feature`)
-is unchanged.
+is unchanged, apart from the ports below when the project declares them.
 
 **Dev-server slots.** When the project declares `Ports:` (see `## Dev Servers`), every driver claims
 a slot from a ledger shared by all sessions on the machine, `~/.claude/expediter/slots.json`, before
@@ -207,9 +209,10 @@ slot up, then claims one again and restarts when you answer.
 **Status.** `/run-features status`, or `python3 <plugin>/tools/slots.py status` from the repo, lists
 every worktree's feature with its checkpoint status, current task and ports.
 
-**Stale slots.** A slot is freed automatically when its worktree is gone, its checkpoint is missing
-or `status: done`, or none of its ports has answered and its checkpoint hasn't changed for 30
-minutes (a closed tab). Nothing is ever killed: a server still listening keeps its slot, and an app
+**Stale slots.** A slot is freed automatically when its worktree is gone or its checkpoint is
+missing. Otherwise a server still listening keeps its slot, even for a finished feature (it still
+uses RAM). With nothing listening, the slot is freed when the checkpoint says `status: done`, or
+after 30 minutes without a checkpoint change (a closed tab). Nothing is ever killed: and an app
 copy no feature accounts for shows as a `WARNING` in status for you to stop. Free a slot by hand
 with `slots.py release <slug>`.
 
