@@ -12,6 +12,18 @@ This is the **driving half** of `/build-feature`. Planning already happened in a
 
 **Keep a live checkpoint.** Before the first ticket, write `.scratch/$ARGUMENTS/checkpoint.md` from the template at `${CLAUDE_PLUGIN_ROOT}/templates/checkpoint.md` (goal from the handoff, `handoff:` and `worktree:` filled in). Update it after every ticket commit (step 5), whenever you start or restart a dev server, and whenever you stop to escalate. It is what the expediter SessionStart hook re-injects after `/clear` or a compaction, so a batch interrupted mid-feature resumes exactly where it stood. If you find a checkpoint already present and not `status: done`, you are resuming: read it, check its 'Tools to have running', and continue from its 'Next' instead of starting from the first ticket.
 
+**Resuming from a pause** (`status: paused`). If `.scratch/$ARGUMENTS/PAUSE` still exists, the user hasn't resumed yet: say so and stop. Otherwise, before anything else:
+1. If 'Current task' names a WIP sha and `HEAD` is that commit, `git reset --soft HEAD~1` — the half-done ticket's changes are back as uncommitted work, on top of its fixed point. If `HEAD` is not that sha, don't reset; note it and treat the working tree as is.
+2. Set `status: in-progress`, re-acquire a slot and cold-start the dev servers as in step 5 if the ticket is UI-facing.
+3. Continue the recorded ticket through its build command with the line "resume at stage <the recorded stage>" in the brief and the recorded fix-iteration count. The uncommitted diff is the implementation so far; it is committed only after that cycle's tests and review pass, as for any ticket. If the recorded stage doesn't match what's in the worktree (files missing, unexpected changes), dispatch `verifier` in spec-check mode from the ticket's fixed point first, and resume at the stage its verdict implies.
+4. Then carry on with the frontier as normal.
+
+**On a pause message.** When an `Agent` dispatch is refused with "expediter: PAUSE requested", the user is stopping for the day. Pause right away — don't finish the ticket:
+1. Dispatch nothing new. If agents you already dispatched are still running, wait for them to return and note what they reported.
+2. Stop the dev servers you started — the ports your slot gave you if you hold one, else the documented ports, checking each PID is your own — and `release` any slot (step 6 has the command).
+3. WIP-commit everything in the worktree: `git add -A && git commit -m "WIP(pause): <ticket> at <stage>"`, where stage is the last one that finished: `implemented`, `tested+reviewed` (with N open findings), or `fix iteration k`. Nothing to commit: skip, and record "no changes".
+4. Update the checkpoint: `status: paused`; 'Current task' = the ticket, its fixed point (base sha), the stage and fix-iteration count, and the WIP sha; 'Next' = "resume: undo the WIP commit, continue <ticket> at <stage>". Then reply `paused` and stop. Do not retry the refused dispatch.
+
 **Framing rules (same discipline as build-ticket):**
 - You (the orchestrator) do NOT edit code yourself. Every code change flows through `/build-ticket`'s subagents so each stays scoped to its role. You only write plan/ticket artifacts, create the branch, and commit.
 - Each ticket brief you pass to `/build-ticket` is a self-contained contract. Do NOT tell it or its subagents to "read the plan file" — inline the specifics (goal, files, approach, exact verify criteria).

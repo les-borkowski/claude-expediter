@@ -1,6 +1,7 @@
 # Checkpoint — <feature slug, or a short title for this session's work>
 
-updated: <ISO timestamp>    status: in-progress | blocked | done
+updated: <ISO timestamp>    status: in-progress | blocked | paused | done
+session: <background session id, or none>
 handoff: <path to .scratch/<slug>/handoff.md, or none>
 worktree: <absolute path the session should be in, or the repo root>
 

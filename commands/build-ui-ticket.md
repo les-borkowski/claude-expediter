@@ -19,6 +19,8 @@ This is the frontend sibling of `/build-ticket`. Same contract: it executes ONE 
 - **Resolve the project's test command before briefing `test-writer`** — read `## Build & Test Commands` in `CLAUDE.md` and pass it inline rather than assuming a package manager.
 - Inside this command the recipe governs. Superpowers skills are used at the named integration points below; their own triggers do not restructure the loop. Skip any integration point whose skill isn't installed.
 
+**Resuming a paused ticket.** If the brief carries "resume at stage <implemented | tested+reviewed | fix iteration k>" (from `/drive-tickets` after a pause), the worktree already holds this ticket's uncommitted work: skip the implement step, and for `tested+reviewed` or `fix iteration k` go straight to the fix-loop with its count starting at k (the 3-iteration bound still counts the iterations spent before the pause). Brief the first agent you dispatch with `git diff` of that work, not "see the changes". Without that line, run every step as normal.
+
 **Steps:**
 
 0. **Isolate (standalone runs only).** Skip when nested inside `/drive-tickets` or `/build-feature` (it already set up an isolated worktree and this cycle inherits that working directory) or when the session is already in a linked worktree. Otherwise follow `superpowers:using-git-worktrees` Step 0, then use the native `EnterWorktree` tool before Step 1. If isolating, every path you hand a subagent must point at the worktree's checkout, not the original checkout.
