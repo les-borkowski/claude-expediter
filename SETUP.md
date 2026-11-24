@@ -48,6 +48,14 @@ State:
 - Any startup flag that is *unsafe* and why (a skip-the-build flag that silently serves a stale
   artifact is the classic).
 - How to stop them cleanly, if killing the build tool doesn't kill the forked process.
+- **Optional — only if you run several features at once** (see *Running several features*):
+  - `Ports: backend=8080, frontend=5173` — one `name=base` per server, with `{port:backend}` /
+    `{port:frontend}` placeholders in the start commands and URLs above (a frontend that proxies to
+    the backend takes `{port:backend}` too). A standalone run uses the base ports.
+  - `Max instances: 2` — how many copies of the app may run at once on this machine (default 2).
+    Set it from RAM: what one copy uses against what you can spare.
+
+  Without a `Ports:` line nothing changes: servers start exactly as documented.
 
 ### `## Conventions` — strongly recommended
 
@@ -179,6 +187,31 @@ you'd rather keep a conversation summary as well — it costs a full re-read of 
 
 Run `/expediter:checkpoint` yourself any time outside `/drive-tickets` — before a break, or before
 a `/clear` in an ordinary session. It writes the same file the hook reads.
+
+## Running several features
+
+`/run-features plan-a.md plan-b.md plan-c.md` in one terminal (your strongest model) plans each
+feature with you in turn — both approval gates as usual — and as each plan is approved opens a new
+Windows Terminal tab in its worktree running `claude --model sonnet --advisor opus
+"/expediter:drive-tickets <slug>"`. Without `wt` it prints that line for you to run instead. A single
+plan works too. Running one feature by hand (`/plan-feature` + `/drive-tickets`, or `/build-feature`)
+is unchanged.
+
+**Dev-server slots.** When the project declares `Ports:` (see `## Dev Servers`), every driver claims
+a slot from a ledger shared by all sessions on the machine, `~/.claude/expediter/slots.json`, before
+starting the app. Slot *k* runs every server on base port + *k*; the base ports themselves stay free
+for your own manual runs. When `Max instances` slots are taken, a driver does its non-UI tickets
+first, then waits for a slot. A driver that stops to ask you something stops its app and gives its
+slot up, then claims one again and restarts when you answer.
+
+**Status.** `/run-features status`, or `python3 <plugin>/tools/slots.py status` from the repo, lists
+every worktree's feature with its checkpoint status, current task and ports.
+
+**Stale slots.** A slot is freed automatically when its worktree is gone, its checkpoint is missing
+or `status: done`, or none of its ports has answered and its checkpoint hasn't changed for 30
+minutes (a closed tab). Nothing is ever killed: a server still listening keeps its slot, and an app
+copy no feature accounts for shows as a `WARNING` in status for you to stop. Free a slot by hand
+with `slots.py release <slug>`.
 
 ## Recommended user settings (Opus 5.5 / Sonnet 5.5)
 
