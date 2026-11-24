@@ -6,7 +6,7 @@
   slots.py status [--worktree PATH]
   slots.py --self-test
 """
-import argparse, contextlib, json, os, re, socket, subprocess, sys, time
+import argparse, contextlib, json, os, re, shlex, socket, subprocess, sys, time
 from pathlib import Path
 
 GRACE_S = 30 * 60      # an unlistened slot survives this long after acquire / last checkpoint write
@@ -208,14 +208,21 @@ def _flag(row):
 def pause(rows):
     flagged = []
     for r in rows:
-        if r["status"] != "done":
-            _flag(r).write_text("pause requested\n", encoding="utf-8")
+        flag = _flag(r)
+        if r["status"] != "done" and not flag.is_symlink():
+            flag.write_text("pause requested\n", encoding="utf-8")
             flagged.append(r["slug"])
     return flagged
 
 
+SAFE_SLUG = re.compile(r"[A-Za-z0-9._-]+")
+
+
 def launch_line(row):
-    return (f'cd "{row["worktree"]}" && claude --bg --name {row["slug"]} --model sonnet '
+    # the line is run by a shell: a slug comes from a folder name, so refuse anything but plain names
+    if not SAFE_SLUG.fullmatch(row["slug"]):
+        return None
+    return (f'cd {shlex.quote(row["worktree"])} && claude --bg --name {row["slug"]} --model sonnet '
             f'--advisor opus "/expediter:drive-tickets {row["slug"]}"')
 
 
@@ -225,7 +232,7 @@ def resume(rows):
         with contextlib.suppress(OSError):
             _flag(r).unlink()
         if r["status"] != "done" and r["driver"] in NOT_LIVE:
-            lines.append(launch_line(r))
+            lines.append(launch_line(r) or f"# skipped {r['slug']!r}: not a plain feature name")
     return lines
 
 
@@ -522,6 +529,23 @@ def test_status_json_shape():
                       "ports", "updated"}, set(r)
     assert r["ports"] == {"app": 8081} and r["driver"] == "stopped"
     json.dumps(r)
+
+
+def test_launch_line_rejects_unsafe_slug():
+    bad = {"slug": 'x"; rm -rf ~; "', "worktree": "C:/w", "status": "paused", "driver": "stopped"}
+    good = {"slug": "csv-export", "worktree": "C:/w $HOME", "status": "paused", "driver": "stopped"}
+    assert launch_line(bad) is None
+    assert launch_line(good).startswith("cd 'C:/w $HOME' && ")
+
+
+def test_pause_skips_symlinked_flag():
+    d = _fixture(); a = _wt(d, "a"); target = d / "elsewhere.txt"
+    try:
+        (Path(a) / ".scratch" / "a" / "PAUSE").symlink_to(target)
+    except OSError:
+        return  # no symlink privilege on this Windows account: nothing to test
+    assert pause(feature_rows([a], {}, {})) == []
+    assert not target.exists()
 
 
 def _self_test():
