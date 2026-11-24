@@ -166,8 +166,23 @@ def drivers(cmd=("claude", "agents", "--json")):
 NOT_LIVE = {"stopped", "done", "failed"}
 
 
+def _owners(wts, live):
+    """Driver state per worktree. A session counts for the innermost worktree containing its cwd,
+    so one that cd'd into a subfolder still matches, and a nested worktree's never leaks upward."""
+    roots = sorted((_norm(w) for w in wts), key=len, reverse=True)
+    found = {}
+    for cwd, state in live.items():
+        for r in roots:
+            if cwd == r or cwd.startswith(r.rstrip(os.sep) + os.sep):
+                if found.get(r) != "working":
+                    found[r] = state
+                break
+    return found
+
+
 def feature_rows(wts, slots, live):
     rows = []
+    owned = _owners(wts, live) if live is not None else None
     for wt in wts:
         for cp in sorted(Path(wt).glob(".scratch/*/checkpoint.md")):
             slug = cp.parent.name
@@ -182,7 +197,7 @@ def feature_rows(wts, slots, live):
             if live is None:
                 driver = "unknown"
             else:
-                driver = live.get(_norm(wt), "stopped")
+                driver = owned.get(_norm(wt), "stopped")
             if status == "done":
                 state = "done"
             elif status == "paused":
@@ -234,6 +249,8 @@ def resume(rows):
             _flag(r).unlink()
         if r["status"] != "done" and r["driver"] in NOT_LIVE:
             lines.append(launch_line(r) or f"# skipped {r['slug']!r}: not a plain feature name")
+        elif r["status"] == "paused" and not SAFE_SLUG.fullmatch(r["slug"]):
+            lines.append(f"# skipped {r['slug']!r}: not a plain feature name")
         elif r["status"] == "paused":
             # a paused driver usually stays open; it needs a nudge, not a second session
             lines.append(f'# {r["slug"]}: driver still open, {r["driver"]} - run: claude attach {r["slug"]}  and say "resume"')
@@ -560,6 +577,18 @@ def test_pause_skips_features_without_a_driver():
 def test_pause_flags_all_when_drivers_unknown():
     d = _fixture(); a = _wt(d, "a")
     assert pause(feature_rows([a], {}, None)) == ["a"]
+
+
+def test_driver_in_subfolder_matches_its_worktree_only():
+    d = _fixture(); main_ = _wt(d, "m"); nested = _wt(Path(main_) / ".claude" / "worktrees", "n")
+    live = {_norm(os.path.join(nested, "frontend")): "working"}
+    rows = {r["slug"]: r["driver"] for r in feature_rows([main_, nested], {}, live)}
+    assert rows == {"m": "stopped", "n": "working"}, rows
+
+
+def test_nudge_line_rejects_unsafe_slug():
+    r = {"slug": "x\nrm -rf ~", "worktree": "C:/w", "status": "paused", "driver": "idle"}
+    assert resume([r]) == ["# skipped 'x\\nrm -rf ~': not a plain feature name"], resume([r])
 
 
 def _self_test():
