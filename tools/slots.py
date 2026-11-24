@@ -209,7 +209,8 @@ def pause(rows):
     flagged = []
     for r in rows:
         flag = _flag(r)
-        if r["status"] != "done" and not flag.is_symlink():
+        # a feature with no running driver can't take the pause step, so its flag would never clear
+        if r["status"] != "done" and r["driver"] != "stopped" and not flag.is_symlink():
             flag.write_text("pause requested\n", encoding="utf-8")
             flagged.append(r["slug"])
     return flagged
@@ -233,6 +234,9 @@ def resume(rows):
             _flag(r).unlink()
         if r["status"] != "done" and r["driver"] in NOT_LIVE:
             lines.append(launch_line(r) or f"# skipped {r['slug']!r}: not a plain feature name")
+        elif r["status"] == "paused":
+            # a paused driver usually stays open; it needs a nudge, not a second session
+            lines.append(f'# {r["slug"]}: driver still open, {r["driver"]} - run: claude attach {r["slug"]}  and say "resume"')
     return lines
 
 
@@ -269,17 +273,6 @@ def _status(data, repo, worktree, now, as_json=False):
         print("  (no features)")
     for w in warnings:
         print(f"  WARNING: {w}")
-    # an unaccounted listener in a slot range is an orphaned server still using RAM; report, never kill
-    held_ports = {p for e in slots.values() for p in e["ports"].values()}
-    bases = {}
-    for e in slots.values():
-        for n, p in e["ports"].items():
-            bases[n] = p - e["offset"]
-    top = max([e["offset"] for e in slots.values()] + [0]) + 2
-    for n, b in bases.items():
-        for k in range(1, top + 1):
-            if b + k not in held_ports and listening(b + k):
-                print(f"  WARNING: port {b + k} ({n}, slot {k}) is listening but no feature holds it")
 
 
 def main(argv):
@@ -296,11 +289,14 @@ def main(argv):
 
     wt = os.path.realpath(args.worktree)
     if args.cmd in ("pause", "resume"):
-        live = drivers() if args.cmd == "resume" else {}
+        live = drivers()
         rows = feature_rows(_worktrees(wt), {}, live)
         if args.cmd == "pause":
             flagged = pause(rows)
-            print("pause requested for: " + (", ".join(flagged) or "nothing (all done)"))
+            print("pause requested for: " + (", ".join(flagged) or "nothing running"))
+            idle = [r["slug"] for r in rows if r["status"] != "done" and r["slug"] not in flagged]
+            if idle:
+                print("not running, nothing to pause: " + ", ".join(idle))
         else:
             if live is None:
                 raise SystemExit("slots: can't read `claude agents --json`; is `claude` on PATH?")
@@ -505,17 +501,17 @@ def test_rows_done_total():
 
 def test_pause_flags_non_done_only():
     d = _fixture(); a = _wt(d, "a"); b = _wt(d, "b", status="done")
-    rows = feature_rows([a, b], {}, {})
+    rows = feature_rows([a, b], {}, None)
     assert pause(rows) == ["a"]
     assert (Path(a) / ".scratch" / "a" / "PAUSE").exists()
     assert not (Path(b) / ".scratch" / "b" / "PAUSE").exists()
-    assert feature_rows([a], {}, {})[0]["state"] == "pausing"
+    assert feature_rows([a], {}, {_norm(a): "working"})[0]["state"] == "pausing"
 
 
 def test_resume_skips_live_driver():
     d = _fixture(); a = _wt(d, "a", status="paused"); b = _wt(d, "b", status="paused")
-    pause(feature_rows([a, b], {}, {}))
-    lines = resume(feature_rows([a, b], {}, {_norm(b): "working"}))
+    pause(feature_rows([a, b], {}, None))
+    lines = [l for l in resume(feature_rows([a, b], {}, {_norm(b): "working"})) if not l.startswith("#")]
     assert len(lines) == 1 and "--name a " in lines[0] and "/expediter:drive-tickets a" in lines[0], lines
     assert not (Path(a) / ".scratch" / "a" / "PAUSE").exists()
     assert not (Path(b) / ".scratch" / "b" / "PAUSE").exists()
@@ -546,6 +542,24 @@ def test_pause_skips_symlinked_flag():
         return  # no symlink privilege on this Windows account: nothing to test
     assert pause(feature_rows([a], {}, {})) == []
     assert not target.exists()
+
+
+def test_resume_points_at_live_paused_driver():
+    d = _fixture(); a = _wt(d, "a", status="paused")
+    lines = resume(feature_rows([a], {}, {_norm(a): "idle"}))
+    assert lines == ['# a: driver still open, idle - run: claude attach a  and say "resume"'], lines
+
+
+def test_pause_skips_features_without_a_driver():
+    d = _fixture(); a = _wt(d, "a"); b = _wt(d, "b")
+    flagged = pause(feature_rows([a, b], {}, {_norm(a): "working"}))
+    assert flagged == ["a"], flagged
+    assert not (Path(b) / ".scratch" / "b" / "PAUSE").exists()
+
+
+def test_pause_flags_all_when_drivers_unknown():
+    d = _fixture(); a = _wt(d, "a")
+    assert pause(feature_rows([a], {}, None)) == ["a"]
 
 
 def _self_test():

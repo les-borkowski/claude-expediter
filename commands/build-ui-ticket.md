@@ -19,7 +19,7 @@ This is the frontend sibling of `/build-ticket`. Same contract: it executes ONE 
 - **Resolve the project's test command before briefing `test-writer`** — read `## Build & Test Commands` in `CLAUDE.md` and pass it inline rather than assuming a package manager.
 - Inside this command the recipe governs. Superpowers skills are used at the named integration points below; their own triggers do not restructure the loop. Skip any integration point whose skill isn't installed.
 
-**Resuming a paused ticket.** If the brief carries "resume at stage <implemented | tested+reviewed | fix iteration k>" (from `/drive-tickets` after a pause), the worktree already holds this ticket's uncommitted work: skip the implement step, and for `tested+reviewed` or `fix iteration k` go straight to the fix-loop with its count starting at k (the 3-iteration bound still counts the iterations spent before the pause). Brief the first agent you dispatch with `git diff` of that work, not "see the changes". Without that line, run every step as normal.
+**Resuming a paused ticket.** If the brief carries "resume at stage <implemented | tested+reviewed | fix iteration k>" (from `/drive-tickets` after a pause), the worktree already holds this ticket's uncommitted work: skip the implement step, and for `tested+reviewed` or `fix iteration k` go straight to the fix-loop with its count starting at k (the 3-iteration bound still counts the iterations spent before the pause), fixing the open findings the brief carries; if it carries none, re-run the review first. Brief the first agent you dispatch with `git diff <fixed point>` of that work (the resumed changes are staged, so plain `git diff` shows nothing), not "see the changes". Without that line, run every step as normal.
 
 **Steps:**
 

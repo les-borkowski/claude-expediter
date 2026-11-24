@@ -13,8 +13,15 @@ def decide(event):
     cwd = event.get("cwd")
     if not cwd:
         return None
+    flags = []
     try:
-        flags = sorted(Path(cwd).glob(".scratch/*/PAUSE"))
+        # a driver may have cd'd into a subfolder: walk up, but stop at its own checkout root
+        # (a worktree has a .git file) so a session never sees a nested worktree's flag
+        here = Path(cwd).resolve()
+        for d in [here, *here.parents]:
+            flags = sorted(d.glob(".scratch/*/PAUSE"))
+            if flags or (d / ".git").exists():
+                break
     except OSError:
         return None
     if not flags:
@@ -73,6 +80,13 @@ def test_gate_scoped_to_own_cwd():
     wt = main_ / ".claude" / "worktrees" / "feature-x" / ".scratch" / "x"
     wt.mkdir(parents=True); (wt / "PAUSE").write_text("x")
     assert decide({"cwd": str(main_), "tool_name": "Agent"}) is None
+
+
+def test_gate_denies_from_a_subfolder():
+    d = _feature(True); (d / ".git").write_text("gitdir: x")
+    sub = d / "frontend" / "src"; sub.mkdir(parents=True)
+    out = decide({"cwd": str(sub), "tool_name": "Agent"})
+    assert out and out["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
 if __name__ == "__main__":

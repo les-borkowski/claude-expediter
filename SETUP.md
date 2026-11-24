@@ -210,11 +210,12 @@ puts a `PAUSE` flag in every unfinished feature. expediter's pause hook refuses 
 agent dispatch, and the driver pauses right away: waits for agents already running, stops its app,
 frees its slot, commits its half-done work as `WIP(pause): <ticket> at <stage>`, and marks its
 checkpoint `paused`. A driver that is idle or waiting on you takes that step on its next action, so
-`claude attach` it and send anything if its row stays `pausing`. Stop for the day once every row in
-`/run-features status` reads `paused`.
+`claude attach` it and send anything if its row stays `pausing`. Features with no running driver aren't
+flagged. Stop for the day once every flagged row in `/run-features status` reads `paused`.
 
 **Next morning.** `/run-features resume` clears the flags and starts a fresh background driver for
-every unfinished feature whose driver isn't running. Each one undoes its WIP commit and continues the
+every unfinished feature whose driver isn't running (after a reboot, that's all of them). A paused
+driver whose session is still open gets a line telling you to `claude attach <slug>` and say "resume". Each one undoes its WIP commit and continues the
 half-done ticket from the recorded stage; that ticket is still tested and reviewed before it's
 committed.
 
@@ -232,7 +233,7 @@ slot up, then claims one again and restarts when you answer.
 
 **Status.** `/run-features status`, or `python3 <plugin>/tools/slots.py status` from the repo, lists
 every worktree's feature: state (working / idle / waiting on you / pausing / paused / stopped /
-done), tickets done/total, ports and current task. `--json` gives the same as JSON.
+done, or what `claude agents` reports, e.g. `failed`; `unknown` if it can't be read), tickets done/total, ports and current task. `--json` gives the same as JSON.
 
 **Stale slots.** A slot is freed automatically when its worktree is gone or its checkpoint is
 missing. Otherwise a server still listening keeps its slot, even for a finished feature (it still

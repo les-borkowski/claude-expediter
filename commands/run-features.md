@@ -9,11 +9,11 @@ You are the **manager**: you plan each feature with the user, launch its driver,
 
 Run every `slots.py` command below from the main checkout as `python3 "${CLAUDE_PLUGIN_ROOT}/tools/slots.py" <cmd>`.
 
-**`status`:** run `slots.py status`, print its output as-is, and stop. Each row: feature, state (working / idle / waiting on you / pausing / paused / stopped / done), tickets done/total, ports, current task. Point out any `WARNING` line: an app copy no feature accounts for, still using RAM. Never kill it yourself — say which port, and let the user decide.
+**`status`:** run `slots.py status`, print its output as-is, and stop. Each row: feature, state (working / idle / waiting on you / pausing / paused / stopped / done, or whatever `claude agents` reports, e.g. `failed`; `unknown` if it can't be read), tickets done/total, ports, current task. Point out any `WARNING` line: an app copy no feature accounts for, still using RAM. Never kill it yourself — say which port, and let the user decide.
 
-**`pause`:** run `slots.py pause` and print what it flagged. It writes a `PAUSE` flag into every unfinished feature; expediter's pause hook then refuses each driver's next agent dispatch and sends it through its pause steps (stop its app, free its slot, WIP-commit, checkpoint `paused`). Tell the user to watch `/run-features status` until every row reads `paused` (an idle or waiting driver may need `claude attach <slug>` and any message to take its next step), then they can stop for the day. Nothing else to do.
+**`pause`:** run `slots.py pause` and print what it flagged. It writes a `PAUSE` flag into every unfinished feature; expediter's pause hook then refuses each driver's next agent dispatch and sends it through its pause steps (stop its app, free its slot, WIP-commit, checkpoint `paused`). Features with no running driver aren't flagged (the output lists them; nothing to pause). Tell the user to watch `/run-features status` until every flagged row reads `paused` (an idle or waiting driver may need `claude attach <slug>` and any message to take its next step), then they can stop for the day. Nothing else to do.
 
-**`resume`:** run `slots.py resume`. It clears the flags and prints one launch line per unfinished feature whose driver is no longer running. Run each printed line as-is (Bash), then run `status`. A driver whose session is still alive just continues on its own once its flag is gone; if one sits idle, tell the user to `claude attach <slug>` and say "resume".
+**`resume`:** run `slots.py resume`. It clears the flags and prints one launch line per unfinished feature whose driver is no longer running. Run each launch line as-is (Bash); if one fails, open that feature in a tab with step 3's `wt` fallback. Lines starting with `#` are for the user, not to run: a paused driver whose session is still open needs `claude attach <slug>` and "resume" — relay them. Then run `status`.
 
 **Otherwise, for each plan in the order given:**
 
