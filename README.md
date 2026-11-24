@@ -31,8 +31,8 @@ Then set the project up per [SETUP.md](SETUP.md). The minimum that makes the com
       ── new session on Sonnet ──
 /drive-tickets <slug>      (Sonnet)        drive every ticket → a reviewable branch
 
-/run-features <plan> <plan> ...   plan each in turn; launch each driver in its own wt tab
-/run-features status              every feature's checkpoint + dev-server slot
+/run-features <plan> <plan> ...   plan each in turn; start each driver as a background session
+/run-features status|pause|resume  progress + ports; pause all for the night; resume all
 
 /build-feature  <plan>        both halves in one session — same steps, one model
    ├─ refine (codebase-design) → ask open questions          [gate 1]
@@ -51,7 +51,7 @@ Then set the project up per [SETUP.md](SETUP.md). The minimum that makes the com
 |---|---|---|
 | `/plan-feature` | planning half | refine, design, tickets, two approval gates; writes `.scratch/<slug>/handoff.md`. Run on your strongest model. |
 | `/drive-tickets` | driving half | reads the handoff, drives every ticket, commits per ticket. `model: sonnet`. Never merges. |
-| `/run-features` | several features at once | plans each with you, then opens a Windows Terminal tab running `/drive-tickets` for it. A shared slot ledger (`tools/slots.py`) gives each feature its own dev-server ports and caps app copies per repo. `status` shows them all. See SETUP.md → *Running several features*. |
+| `/run-features` | several features at once | plans each with you, then starts `/drive-tickets` for it as a background session (`claude agents` to watch, `claude attach` to answer). `pause` / `resume` stop and restart every driver for the night. A shared slot ledger (`tools/slots.py`) gives each feature its own dev-server ports and caps app copies per repo. `status` shows them all. See SETUP.md → *Running several features*. |
 | `/checkpoint` | any session | writes the resume checkpoint (goal, current task, done, next, tools to restart). `/clear` then resumes from it. |
 | `/build-feature` | a whole feature | both halves in one session. Simpler, but the whole drive runs on the planning model. |
 | `/build-ticket` | one non-UI ticket | `feature-implementer` → (`test-writer` ∥ `code-reviewer`) → bounded fix loop |

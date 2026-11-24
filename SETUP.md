@@ -193,11 +193,35 @@ a `/clear` in an ordinary session. It writes the same file the hook reads.
 ## Running several features
 
 `/run-features plan-a.md plan-b.md plan-c.md` in one terminal (your strongest model) plans each
-feature with you in turn — you approve the design; the ticket split is approved automatically — and as each plan is approved opens a new
-Windows Terminal tab in its worktree — PowerShell 7 (`pwsh`) with your profile loaded — running `claude --model sonnet --advisor opus
-"/expediter:drive-tickets <slug>"`. Without `wt` it prints that line for you to run instead. A single
+feature with you in turn — you approve the design; the ticket split is approved automatically — and
+as each plan is approved starts its driver as a **background session** in its worktree:
+`claude --bg --name <slug> --model sonnet --advisor opus "/expediter:drive-tickets <slug>"`. A single
 plan works too. Running one feature by hand (`/plan-feature` + `/drive-tickets`, or `/build-feature`)
 is unchanged, apart from the ports below when the project declares them.
+
+**Watching them.** `claude agents` is the live view: every driver by name, working / needs input /
+done, with a summary line. `claude attach <slug>` opens one to answer a question (← goes back).
+Background sessions only start in a folder Claude trusts; feature worktrees under the repo's
+`.claude/worktrees/` inherit the repo's trust. If a launch fails anyway, `/run-features` opens a
+Windows Terminal tab instead (PowerShell 7, `pwsh`, with your profile loaded).
+
+**End of the day.** `/run-features pause` (or `python3 <plugin>/tools/slots.py pause` for no tokens)
+puts a `PAUSE` flag in every unfinished feature. expediter's pause hook refuses each driver's next
+agent dispatch, and the driver pauses right away: waits for agents already running, stops its app,
+frees its slot, commits its half-done work as `WIP(pause): <ticket> at <stage>`, and marks its
+checkpoint `paused`. A driver that is idle or waiting on you takes that step on its next action, so
+`claude attach` it and send anything if its row stays `pausing`. Stop for the day once every row in
+`/run-features status` reads `paused`.
+
+**Next morning.** `/run-features resume` clears the flags and starts a fresh background driver for
+every unfinished feature whose driver isn't running. Each one undoes its WIP commit and continues the
+half-done ticket from the recorded stage; that ticket is still tested and reviewed before it's
+committed.
+
+**Local config in worktrees.** A new worktree has only tracked files. If the build needs gitignored
+local files (`.env`, local Spring profiles, a frontend `.env.local`), list them in a
+`.worktreeinclude` file at the repo root (same syntax as `.gitignore`); Claude Code copies them into
+every worktree it creates.
 
 **Dev-server slots.** When the project declares `Ports:` (see `## Dev Servers`), every driver claims
 a slot from a ledger shared by all sessions on the machine, `~/.claude/expediter/slots.json`, before
@@ -207,7 +231,8 @@ first, then waits for a slot. A driver that stops to ask you something stops its
 slot up, then claims one again and restarts when you answer.
 
 **Status.** `/run-features status`, or `python3 <plugin>/tools/slots.py status` from the repo, lists
-every worktree's feature with its checkpoint status, current task and ports.
+every worktree's feature: state (working / idle / waiting on you / pausing / paused / stopped /
+done), tickets done/total, ports and current task. `--json` gives the same as JSON.
 
 **Stale slots.** A slot is freed automatically when its worktree is gone or its checkpoint is
 missing. Otherwise a server still listening keeps its slot, even for a finished feature (it still
