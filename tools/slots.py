@@ -148,24 +148,120 @@ def _parse_ports(spec):
     return out
 
 
-def _status(data, repo, worktree, now):
-    reclaim(data, repo, now, listening)
-    slots = data.get(repo, {})
-    print(f"repo: {repo}")
-    wts = [l[9:] for l in _git(worktree, "worktree", "list", "--porcelain").splitlines()
-           if l.startswith("worktree ")]
+def _norm(p):
+    return os.path.normcase(os.path.realpath(p))
+
+
+def drivers(cmd=("claude", "agents", "--json")):
+    """Live Claude sessions: normalised cwd -> state. None when `claude agents` can't be read."""
+    try:
+        r = subprocess.run(list(cmd), capture_output=True, text=True, timeout=15)
+        rows = json.loads(r.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    return {_norm(e["cwd"]): e.get("state") or {"busy": "working"}.get(e.get("status"), e.get("status") or "unknown")
+            for e in rows if isinstance(e, dict) and e.get("cwd")}
+
+
+NOT_LIVE = {"stopped", "done", "failed"}
+
+
+def feature_rows(wts, slots, live):
+    rows = []
     for wt in wts:
         for cp in sorted(Path(wt).glob(".scratch/*/checkpoint.md")):
             slug = cp.parent.name
             text = cp.read_text(encoding="utf-8", errors="ignore")
             st = re.search(r"status:\s*(\S+)", text[:600])
+            status = st.group(1) if st else "?"
             cur = re.search(r"## Current task\s*\n+(.+)", text)
+            done_sec = re.search(r"## Completed\s*\n(.*?)(?:\n## |\Z)", text, re.S)
+            done = len(re.findall(r"^- ", done_sec.group(1), re.M)) if done_sec else 0
+            issues = cp.parent / "issues"
+            total = len(list(issues.glob("*.md"))) if issues.is_dir() else 0
+            if live is None:
+                driver = "unknown"
+            else:
+                driver = live.get(_norm(wt), "stopped")
+            if status == "done":
+                state = "done"
+            elif status == "paused":
+                state = "paused"
+            elif (cp.parent / "PAUSE").exists():
+                state = "pausing"
+            elif status == "blocked":
+                state = "waiting on you"
+            else:
+                state = driver
             held = slots.get(slug)
-            ports = ", ".join(f"{n}={p}" for n, p in held["ports"].items()) if held else "no slot"
-            print(f"  {slug:<28} {st.group(1) if st else '?':<12} {ports:<30} "
-                  f"{cur.group(1).strip()[:60] if cur else ''}")
-    if not wts:
-        print("  (no worktrees)")
+            rows.append({"slug": slug, "worktree": str(wt), "status": status, "driver": driver,
+                         "state": state, "current": cur.group(1).strip() if cur else "",
+                         "done": done, "total": total, "ports": held["ports"] if held else None,
+                         "updated": cp.stat().st_mtime})
+    return rows
+
+
+def _flag(row):
+    return Path(row["worktree"]) / ".scratch" / row["slug"] / "PAUSE"
+
+
+def pause(rows):
+    flagged = []
+    for r in rows:
+        if r["status"] != "done":
+            _flag(r).write_text("pause requested\n", encoding="utf-8")
+            flagged.append(r["slug"])
+    return flagged
+
+
+def launch_line(row):
+    return (f'cd "{row["worktree"]}" && claude --bg --name {row["slug"]} --model sonnet '
+            f'--advisor opus "/expediter:drive-tickets {row["slug"]}"')
+
+
+def resume(rows):
+    lines = []
+    for r in rows:
+        with contextlib.suppress(OSError):
+            _flag(r).unlink()
+        if r["status"] != "done" and r["driver"] in NOT_LIVE:
+            lines.append(launch_line(r))
+    return lines
+
+
+def _worktrees(worktree):
+    return [l[9:] for l in _git(worktree, "worktree", "list", "--porcelain").splitlines()
+            if l.startswith("worktree ")]
+
+
+def _status(data, repo, worktree, now, as_json=False):
+    reclaim(data, repo, now, listening)
+    slots = data.get(repo, {})
+    rows = feature_rows(_worktrees(worktree), slots, drivers())
+    warnings = []
+    # an unaccounted listener in a slot range is an orphaned server still using RAM; report, never kill
+    held_ports = {p for e in slots.values() for p in e["ports"].values()}
+    bases = {}
+    for e in slots.values():
+        for n, p in e["ports"].items():
+            bases[n] = p - e["offset"]
+    top = max([e["offset"] for e in slots.values()] + [0]) + 2
+    for n, b in bases.items():
+        for k in range(1, top + 1):
+            if b + k not in held_ports and listening(b + k):
+                warnings.append(f"port {b + k} ({n}, slot {k}) is listening but no feature holds it")
+    if as_json:
+        print(json.dumps({"repo": repo, "features": rows, "warnings": warnings}, indent=2))
+        return
+    print(f"repo: {repo}")
+    for r in rows:
+        ports = ", ".join(f"{n}={p}" for n, p in r["ports"].items()) if r["ports"] else "no slot"
+        print(f"  {r['slug']:<26} {r['state']:<15} {r['done']}/{r['total']:<4} {ports:<26} "
+              f"{r['current'][:50]}")
+    if not rows:
+        print("  (no features)")
+    for w in warnings:
+        print(f"  WARNING: {w}")
     # an unaccounted listener in a slot range is an orphaned server still using RAM; report, never kill
     held_ports = {p for e in slots.values() for p in e["ports"].values()}
     bases = {}
@@ -185,12 +281,25 @@ def main(argv):
     a = sub.add_parser("acquire"); a.add_argument("slug")
     a.add_argument("--ports", required=True); a.add_argument("--max", type=int, default=2)
     r = sub.add_parser("release"); r.add_argument("slug")
-    s = sub.add_parser("status")
-    for p in (a, r, s):
+    s = sub.add_parser("status"); s.add_argument("--json", action="store_true")
+    pa = sub.add_parser("pause"); re_ = sub.add_parser("resume")
+    for p in (a, r, s, pa, re_):
         p.add_argument("--worktree", default=os.getcwd())
     args = ap.parse_args(argv)
 
     wt = os.path.realpath(args.worktree)
+    if args.cmd in ("pause", "resume"):
+        live = drivers() if args.cmd == "resume" else {}
+        rows = feature_rows(_worktrees(wt), {}, live)
+        if args.cmd == "pause":
+            flagged = pause(rows)
+            print("pause requested for: " + (", ".join(flagged) or "nothing (all done)"))
+        else:
+            if live is None:
+                raise SystemExit("slots: can't read `claude agents --json`; is `claude` on PATH?")
+            lines = resume(rows)
+            print("\n".join(lines) if lines else "nothing to relaunch")
+        return 0
     repo, f, now = repo_key(wt), ledger_path(), time.time()
     with locked(f):
         data = load(f)
@@ -208,7 +317,7 @@ def main(argv):
             release(data, repo, args.slug)
             save(f, data)
         else:
-            _status(data, repo, wt, now)
+            _status(data, repo, wt, now, args.json)
             save(f, data)
     return 0
 
@@ -360,6 +469,59 @@ def test_offsets_distinct_across_repos():
     a = acquire(data, "r1", "a", _wt(d, "a"), 2, {"app": 8080}, 1e9, lambda p: False)
     b = acquire(data, "r2", "b", _wt(d, "b"), 2, {"app": 8080}, 1e9, lambda p: False)
     assert a != b, (a, b)
+
+
+def test_driver_match_normalises_paths():
+    d = _fixture(); wt = _wt(d, "a")
+    live = {_norm(wt.replace("\\", "/").upper() if os.name == "nt" else wt): "working"}
+    rows = feature_rows([wt], {}, live)
+    assert rows[0]["driver"] == "working" and rows[0]["state"] == "working", rows
+
+
+def test_agents_unavailable_is_unknown():
+    assert drivers(["claude-does-not-exist-xyz", "agents", "--json"]) is None
+    d = _fixture(); wt = _wt(d, "a")
+    assert feature_rows([wt], {}, None)[0]["driver"] == "unknown"
+
+
+def test_rows_done_total():
+    d = _fixture(); wt = _wt(d, "a")
+    cp = Path(wt) / ".scratch" / "a" / "checkpoint.md"
+    cp.write_text("status: in-progress\n\n## Completed\n- T1 x\n- T2 y\n- T3 z\n\n## Next\n- not this\n",
+                  encoding="utf-8")
+    issues = Path(wt) / ".scratch" / "a" / "issues"; issues.mkdir()
+    for i in range(5):
+        (issues / f"0{i}-t.md").write_text("x")
+    r = feature_rows([wt], {}, {})[0]
+    assert (r["done"], r["total"]) == (3, 5), r
+
+
+def test_pause_flags_non_done_only():
+    d = _fixture(); a = _wt(d, "a"); b = _wt(d, "b", status="done")
+    rows = feature_rows([a, b], {}, {})
+    assert pause(rows) == ["a"]
+    assert (Path(a) / ".scratch" / "a" / "PAUSE").exists()
+    assert not (Path(b) / ".scratch" / "b" / "PAUSE").exists()
+    assert feature_rows([a], {}, {})[0]["state"] == "pausing"
+
+
+def test_resume_skips_live_driver():
+    d = _fixture(); a = _wt(d, "a", status="paused"); b = _wt(d, "b", status="paused")
+    pause(feature_rows([a, b], {}, {}))
+    lines = resume(feature_rows([a, b], {}, {_norm(b): "working"}))
+    assert len(lines) == 1 and "--name a " in lines[0] and "/expediter:drive-tickets a" in lines[0], lines
+    assert not (Path(a) / ".scratch" / "a" / "PAUSE").exists()
+    assert not (Path(b) / ".scratch" / "b" / "PAUSE").exists()
+
+
+def test_status_json_shape():
+    d = _fixture(); wt = _wt(d, "a")
+    slots = {"a": {"worktree": wt, "offset": 1, "ports": {"app": 8081}, "acquired": 0}}
+    r = feature_rows([wt], slots, {})[0]
+    assert set(r) == {"slug", "worktree", "status", "driver", "state", "current", "done", "total",
+                      "ports", "updated"}, set(r)
+    assert r["ports"] == {"app": 8081} and r["driver"] == "stopped"
+    json.dumps(r)
 
 
 def _self_test():
