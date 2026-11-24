@@ -22,6 +22,7 @@ e.g. "T07: implementer done, test-writer + reviewer dispatched, waiting on both"
 | what | check | start |
 |---|---|---|
 | <dev server: backend> | `curl -sf <url>` | `<exact start command, run in background from worktree>` |
+| <dev-server slot (backend=8081, frontend=5174)> | `python3 <plugin>/tools/slots.py status` | `python3 <plugin>/tools/slots.py acquire <slug> --ports <...>` |
 | <MCP: chrome-devtools> | its tools appear in your tool list | ask the user to reconnect via `/mcp` |
 | <background process / port> | `lsof -i :<port>` | `<command>` |
 <"none" if nothing needs to be running>
